@@ -2,6 +2,7 @@
 .DS_Store
 .env
 .env.*
+!infra/.env.example
 node_modules/
 .next/
 dist/
@@ -10,4 +11,3 @@ venv/
 __pycache__/
 *.pyc
 .coverage
-

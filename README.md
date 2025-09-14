@@ -16,7 +16,8 @@ Konventionen, Vorlagen und Decision Records (ADR) findest du in `docs/LEGEND.md`
 ## Lokal starten (Hinweis)
 - `.env` in `infra/` von `.env.example` ableiten.
 - Docker Compose: `cd infra && docker compose --env-file .env up -d`
-- API (Stub): `apps/api` enthält FastAPI; Health unter `/health`.
-- Web (Stub): `apps/web` Next.js 14 App Router.
+- Migrationen: `docker compose --env-file .env exec api alembic upgrade head`
+- API: FastAPI; Health unter `/health`, Readiness unter `/ready`.
+- Web: Next.js 14 App Router.
 
 Hinweis: Dieses Skeleton enthält noch keine vollständige Build‑/CI‑Konfiguration.
