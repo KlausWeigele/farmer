@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 from uuid import UUID
+from sqlalchemy.exc import DBAPIError
 
 from ..db import engine
 
@@ -32,7 +33,7 @@ def create_field(field: FieldIn):
                           ST_Transform(
                             ST_Multi(
                               ST_SetSRID(
-                                ST_GeomFromGeoJSON(:gjson::json), 4326
+                                ST_GeomFromGeoJSON(:gjson::text), 4326
                               )
                             ), 25832
                           )
@@ -41,7 +42,7 @@ def create_field(field: FieldIn):
                         ST_Transform(
                           ST_Multi(
                             ST_SetSRID(
-                              ST_GeomFromGeoJSON(:gjson::json), 4326
+                              ST_GeomFromGeoJSON(:gjson::text), 4326
                             )
                           ), 25832
                         ),
@@ -82,13 +83,29 @@ def update_field(field_id: UUID, payload: FieldUpdate):
         setters.append("name = :name")
         params["name"] = payload.name
     if payload.geom is not None:
+        gjson = json.dumps(payload.geom)
+        validate_sql = (
+            """
+            SELECT ST_IsValid(geom) AS valid, ST_IsValidReason(geom) AS reason
+            FROM (
+              SELECT ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::text), 4326)), 25832) AS geom
+            ) s
+            """
+        )
+        try:
+            with engine.begin() as conn:
+                valid, reason = conn.execute(text(validate_sql), {"gjson": gjson}).one()
+        except DBAPIError:
+            raise HTTPException(status_code=400, detail="invalid GeoJSON")
+        if not valid:
+            raise HTTPException(status_code=400, detail=f"invalid geometry: {reason}")
         setters.append(
-            "geom = ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::json),4326)),25832)"
+            "geom = ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::text),4326)),25832)"
         )
         setters.append(
-            "area_ha = ST_Area(ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::json),4326)),25832))/10000.0"
+            "area_ha = ST_Area(ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::text),4326)),25832))/10000.0"
         )
-        params["gjson"] = json.dumps(payload.geom)
+        params["gjson"] = gjson
     if len(setters) == 1:
         raise HTTPException(status_code=400, detail="nothing to update")
     sql = f"update field set {', '.join(setters)} where id = :id returning id, name, area_ha"
