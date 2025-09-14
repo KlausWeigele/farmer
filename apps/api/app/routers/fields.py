@@ -17,10 +17,22 @@ class FieldIn(BaseModel):
 
 @router.post("")
 def create_field(field: FieldIn):
+    gjson = json.dumps(field.geom)
+    validate_sql = (
+        """
+        SELECT ST_IsValid(geom) AS valid, ST_IsValidReason(geom) AS reason
+        FROM (
+          SELECT ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::text), 4326)), 25832) AS geom
+        ) s
+        """
+    )
     try:
         with engine.begin() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+            valid, reason = conn.execute(text(validate_sql), {"gjson": gjson}).one()
+            if not valid:
+                raise HTTPException(status_code=400, detail=f"invalid geometry: {reason}")
             res = conn.execute(
                 text(
                     """
@@ -51,12 +63,12 @@ def create_field(field: FieldIn):
                     returning id, name, area_ha
                     """
                 ),
-                {"name": field.name, "gjson": json.dumps(field.geom)},
+                {"name": field.name, "gjson": gjson},
             )
             row = res.fetchone()
             return {"id": str(row[0]), "name": row[1], "area_ha": float(row[2])}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DBAPIError:
+        raise HTTPException(status_code=400, detail="invalid GeoJSON")
 
 
 @router.get("")
