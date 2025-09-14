@@ -25,6 +25,15 @@ jobs:
         run: |
           cd apps/api
           pytest -q
+      - name: Lint (ruff) & Format check (black)
+        run: |
+          cd apps/api
+          ruff check .
+          black --check .
+      - name: Typecheck (mypy)
+        run: |
+          cd apps/api
+          mypy .
       - name: Build API image
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5

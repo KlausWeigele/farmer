@@ -20,6 +20,8 @@ jobs:
         working-directory: apps/web
         run: |
           npm ci || npm install
+          npm run lint
+          npm run typecheck
           npm run build
       - name: Build Web image
         if: github.ref == 'refs/heads/main'

@@ -2,6 +2,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
+from uuid import UUID
 
 from ..db import engine
 
@@ -67,3 +68,42 @@ def list_fields():
         ]
         return rows
 
+
+class FieldUpdate(BaseModel):
+    name: str | None = None
+    geom: dict | None = None  # GeoJSON geometry in EPSG:4326
+
+
+@router.put("/{field_id}")
+def update_field(field_id: UUID, payload: FieldUpdate):
+    setters = ["updated_at = now()"]
+    params: dict[str, object] = {"id": str(field_id)}
+    if payload.name is not None:
+        setters.append("name = :name")
+        params["name"] = payload.name
+    if payload.geom is not None:
+        setters.append(
+            "geom = ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::json),4326)),25832)"
+        )
+        setters.append(
+            "area_ha = ST_Area(ST_Transform(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:gjson::json),4326)),25832))/10000.0"
+        )
+        params["gjson"] = json.dumps(payload.geom)
+    if len(setters) == 1:
+        raise HTTPException(status_code=400, detail="nothing to update")
+    sql = f"update field set {', '.join(setters)} where id = :id returning id, name, area_ha"
+    with engine.begin() as conn:
+        res = conn.execute(text(sql), params)
+        row = res.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        return {"id": str(row[0]), "name": row[1], "area_ha": float(row[2]) if row[2] is not None else None}
+
+
+@router.delete("/{field_id}")
+def delete_field(field_id: UUID):
+    with engine.begin() as conn:
+        res = conn.execute(text("delete from field where id = :id returning 1"), {"id": str(field_id)})
+        if res.fetchone() is None:
+            raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
