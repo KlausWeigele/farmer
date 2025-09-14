@@ -31,7 +31,7 @@ def create_field(field: FieldIn):
                           ST_Transform(
                             ST_Multi(
                               ST_SetSRID(
-                                ST_GeomFromGeoJSON(:gjson::json), 4326
+                                ST_GeomFromGeoJSON(:gjson::text), 4326
                               )
                             ), 25832
                           )
@@ -40,7 +40,7 @@ def create_field(field: FieldIn):
                         ST_Transform(
                           ST_Multi(
                             ST_SetSRID(
-                              ST_GeomFromGeoJSON(:gjson::json), 4326
+                              ST_GeomFromGeoJSON(:gjson::text), 4326
                             )
                           ), 25832
                         ),
@@ -66,4 +66,3 @@ def list_fields():
             for r in res
         ]
         return rows
-

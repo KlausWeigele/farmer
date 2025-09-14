@@ -7,6 +7,7 @@ Create Date: 2025-09-14
 """
 from alembic import op
 import sqlalchemy as sa
+from geoalchemy2 import Geometry
 
 
 # revision identifiers, used by Alembic.
@@ -49,7 +50,7 @@ def upgrade() -> None:
         sa.Column('id', sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('farm_id', sa.dialects.postgresql.UUID(as_uuid=True), sa.ForeignKey('farm.id', ondelete='CASCADE')),
         sa.Column('name', sa.Text()),
-        sa.Column('geom', sa.dialects.postgresql.GEOMETRY(geometry_type='MULTIPOLYGON', srid=25832), nullable=False),
+        sa.Column('geom', Geometry(geometry_type='MULTIPOLYGON', srid=25832), nullable=False),
         sa.Column('area_ha', sa.Numeric()),
         sa.Column('crs', sa.Text(), server_default=sa.text("'EPSG:25832'")),
         sa.Column('soil_type', sa.Text()),
@@ -66,7 +67,7 @@ def upgrade() -> None:
         sa.Column('status', sa.Text(), nullable=False, server_default=sa.text("'planned'")),
         sa.Column('due_at', sa.TIMESTAMP(timezone=True)),
         sa.Column('window_score', sa.Numeric()),
-        sa.Column('assigned_to', sa.dialects.postgresql.UUID(as_uuid=True)),
+        sa.Column('assigned_to', sa.dialects.postgresql.UUID(as_uuid=True), sa.ForeignKey('app_user.id', ondelete='SET NULL'), nullable=True),
         sa.Column('notes', sa.Text()),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()')),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()')),
@@ -125,4 +126,3 @@ def downgrade() -> None:
     op.drop_table('membership')
     op.drop_table('app_user')
     op.drop_table('farm')
-
