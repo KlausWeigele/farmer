@@ -1,7 +1,8 @@
 # Architektur (Gesamt)
 
 ## Frontend
-- Next.js (App Router), PWA, i18n (de/en), TanStack Query/React Query, Zustand/Signals
+- Framework: Next.js (App Router) — Svelte/SvelteKit wird explizit nicht verwendet (siehe ADR‑0006)
+- PWA, i18n (de/en), TanStack Query/React Query, Zustand/Signals
 - Karte: MapLibre GL JS, Draw‑Tools, Vector‑Tiles
 
 ## Backend
@@ -26,4 +27,3 @@
 
 ## Kostenkontrolle
 - Open‑Source Kartenstack (MapLibre/OMT), On‑Demand NDVI, Storage Lifecycle/Archivierung
-
